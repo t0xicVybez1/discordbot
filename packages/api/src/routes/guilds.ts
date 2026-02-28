@@ -46,8 +46,10 @@ export async function guildRoutes(server: FastifyInstance): Promise<void> {
       }));
 
       return reply.send({ success: true, data: enriched });
-    } catch {
-      return reply.code(500).send({ success: false, error: 'Failed to fetch guilds from Discord' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      server.log.error({ err, msg }, 'Failed to fetch guilds');
+      return reply.code(500).send({ success: false, error: `Failed to fetch guilds: ${msg}` });
     }
   });
 
