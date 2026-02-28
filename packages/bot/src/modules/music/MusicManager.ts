@@ -15,7 +15,7 @@ import {
   type AudioPlayer,
 } from '@discordjs/voice';
 import ytdl from '@distube/ytdl-core';
-import YouTube from 'youtube-sr';
+import { YouTube } from 'youtube-sr';
 import { logger } from '../../logger.js';
 
 export interface Track {
