@@ -31,7 +31,7 @@ export interface Track {
 
 function ytdlpBaseArgs(): string[] {
   const args = [
-    '--extractor-args', 'youtube:player_client=web,tv_embedded',
+    '--extractor-args', 'youtube:player_client=web',
     '--no-playlist',
   ];
   const cookiesFile = process.env.YOUTUBE_COOKIES_FILE;
@@ -43,7 +43,7 @@ function ytdlpBaseArgs(): string[] {
 async function getStreamUrl(videoUrl: string): Promise<string> {
   const { stdout } = await execFileAsync('yt-dlp', [
     ...ytdlpBaseArgs(),
-    '-f', 'bestaudio[ext=webm]/bestaudio/best',
+    '-f', 'bestaudio/best',
     '-g',
     videoUrl,
   ]);
