@@ -28,7 +28,8 @@
     "youtube-sr": "^4.3.11",
     "@discordjs/voice": "^0.18.0",
     "libsodium-wrappers": "^0.7.15",
-    "mediaplex": "^0.0.8"
+    "mediaplex": "^0.0.8",
+    "opusscript": "^0.1.1"
   },
   "devDependencies": {
     "@types/ms": "^0.7.34",
