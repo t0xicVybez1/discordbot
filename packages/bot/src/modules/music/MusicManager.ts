@@ -9,11 +9,13 @@ import {
   createAudioResource,
   AudioPlayerStatus,
   VoiceConnectionStatus,
+  StreamType,
   entersState,
   type VoiceConnection,
   type AudioPlayer,
 } from '@discordjs/voice';
-import play from 'play-dl';
+import ytdl from '@distube/ytdl-core';
+import YouTube from 'youtube-sr';
 import { logger } from '../../logger.js';
 
 export interface Track {
@@ -22,6 +24,12 @@ export interface Track {
   duration?: string;
   thumbnail?: string;
   requestedBy: User;
+}
+
+function secondsToTimestamp(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 export class MusicQueue {
@@ -67,9 +75,13 @@ export class MusicQueue {
   async playTrack(track: Track): Promise<void> {
     this.currentTrack = track;
     try {
-      const stream = await play.stream(track.url);
-      this.resource = createAudioResource(stream.stream, {
-        inputType: stream.type,
+      const stream = ytdl(track.url, {
+        filter: 'audioonly',
+        quality: 'highestaudio',
+        highWaterMark: 1 << 25,
+      });
+      this.resource = createAudioResource(stream, {
+        inputType: StreamType.Arbitrary,
         inlineVolume: true,
       });
       this.resource.volume?.setVolume(this.volume / 100);
@@ -122,32 +134,32 @@ export class MusicManager {
     query: string,
     requestedBy: User
   ): Promise<{ type: 'playing' | 'added'; title: string; position?: number; duration?: string; thumbnail?: string }> {
-    // Search for the track
     let trackInfo: { title: string; url: string; duration?: string; thumbnail?: string };
 
     try {
-      if (play.yt_validate(query) === 'video') {
-        const info = await play.video_info(query);
+      const isUrl = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)/.test(query);
+
+      if (isUrl) {
+        const info = await ytdl.getInfo(query);
+        const d = info.videoDetails;
         trackInfo = {
-          title: info.video_details.title ?? 'Unknown',
-          url: info.video_details.url,
-          duration: info.video_details.durationRaw,
-          thumbnail: info.video_details.thumbnails[0]?.url,
+          title: d.title ?? 'Unknown',
+          url: d.video_url,
+          duration: secondsToTimestamp(parseInt(d.lengthSeconds ?? '0')),
+          thumbnail: d.thumbnails[0]?.url,
         };
       } else {
-        const results = await play.search(query, { limit: 5 });
-        const video = results.find((r) => r.url) ?? results[0];
+        const video = await YouTube.searchOne(query, 'video');
         if (!video) throw new Error('No results found');
-        const url = video.url ?? `https://www.youtube.com/watch?v=${(video as { id?: string }).id}`;
         trackInfo = {
           title: video.title ?? 'Unknown',
-          url,
-          duration: video.durationRaw,
-          thumbnail: video.thumbnails[0]?.url,
+          url: video.url,
+          duration: video.durationFormatted,
+          thumbnail: video.thumbnail?.url,
         };
       }
     } catch (err) {
-      logger.error({ err }, 'play-dl search/info failed');
+      logger.error({ err }, 'Music search/info failed');
       throw new Error('Could not find or play that track.');
     }
 
