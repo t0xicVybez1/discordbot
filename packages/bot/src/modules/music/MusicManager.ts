@@ -159,11 +159,16 @@ export class MusicManager {
         adapterCreator: guild.voiceAdapterCreator,
       });
 
+      connection.on('stateChange', (oldState, newState) => {
+        logger.debug(`Voice connection: ${oldState.status} -> ${newState.status}`);
+      });
+
       try {
         await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
-      } catch {
+      } catch (err) {
+        logger.error({ status: connection.state.status, err }, 'Voice connection failed to reach Ready state');
         connection.destroy();
-        throw new Error('Could not connect to voice channel.');
+        throw new Error(`Could not connect to voice channel (stuck at: ${connection.state.status}).`);
       }
 
       connection.on(VoiceConnectionStatus.Disconnected, async () => {
