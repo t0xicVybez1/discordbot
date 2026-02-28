@@ -32,7 +32,7 @@ export async function guildRoutes(server: FastifyInstance): Promise<void> {
       const guildIds = adminGuilds.map((g) => g.id);
       const botGuilds = await prisma.guild.findMany({
         where: { id: { in: guildIds } },
-        select: { id: true, isActive: true, memberCount: true },
+        select: { id: true, isActive: true },
       });
       const botGuildMap = new Map(botGuilds.map((g) => [g.id, g]));
 
@@ -42,7 +42,7 @@ export async function guildRoutes(server: FastifyInstance): Promise<void> {
         iconUrl: g.icon ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png` : null,
         hasAdminPermission: true,
         botPresent: botGuildMap.has(g.id) && (botGuildMap.get(g.id)?.isActive ?? false),
-        memberCount: botGuildMap.get(g.id)?.memberCount ?? 0,
+        memberCount: 0,
       }));
 
       return reply.send({ success: true, data: enriched });
