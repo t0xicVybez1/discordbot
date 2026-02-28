@@ -29,11 +29,16 @@ export interface Track {
   requestedBy: User;
 }
 
+const YTDLP_BASE_ARGS = [
+  '--extractor-args', 'youtube:player_client=ios,mweb',
+  '--no-playlist',
+];
+
 /** Get direct audio stream URL via yt-dlp */
 async function getStreamUrl(videoUrl: string): Promise<string> {
   const { stdout } = await execFileAsync('yt-dlp', [
+    ...YTDLP_BASE_ARGS,
     '-f', 'bestaudio[ext=webm]/bestaudio/best',
-    '--no-playlist',
     '-g',
     videoUrl,
   ]);
@@ -43,8 +48,8 @@ async function getStreamUrl(videoUrl: string): Promise<string> {
 /** Get video metadata via yt-dlp */
 async function getVideoInfo(videoUrl: string): Promise<{ title: string; duration: string; thumbnail: string }> {
   const { stdout } = await execFileAsync('yt-dlp', [
+    ...YTDLP_BASE_ARGS,
     '--dump-json',
-    '--no-playlist',
     videoUrl,
   ]);
   const info = JSON.parse(stdout) as { title?: string; duration_string?: string; thumbnail?: string };
