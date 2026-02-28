@@ -15,12 +15,12 @@ export async function authRoutes(server: FastifyInstance): Promise<void> {
   });
 
   // POST /auth/callback - Exchange code for tokens
-  server.post('/auth/callback', {
-    schema: {
-      body: z.object({ code: z.string(), state: z.string() }),
-    },
-  }, async (request, reply) => {
-    const { code, state } = request.body as { code: string; state: string };
+  server.post('/auth/callback', async (request, reply) => {
+    const parsed = z.object({ code: z.string(), state: z.string() }).safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ success: false, error: 'Invalid request body' });
+    }
+    const { code, state } = parsed.data;
 
     // Validate state
     const valid = await redis.del(`oauth:state:${state}`);

@@ -32,9 +32,9 @@ export class EventHandler {
         }
 
         if (event.once) {
-          this.client.once(event.name, (...args) => event.execute(...args));
+          this.client.once(event.name, (...args) => event.execute(this.client, ...args));
         } else {
-          this.client.on(event.name, (...args) => event.execute(...args));
+          this.client.on(event.name, (...args) => event.execute(this.client, ...args));
         }
 
         logger.debug(`Loaded event: ${event.name}`);
