@@ -149,7 +149,8 @@ export class MusicManager {
           thumbnail: d.thumbnails[0]?.url,
         };
       } else {
-        const video = await YouTube.searchOne(query, 'video');
+        const results = await YouTube.search(query, { limit: 1, type: 'video' });
+        const video = results[0];
         if (!video) throw new Error('No results found');
         trackInfo = {
           title: video.title ?? 'Unknown',
