@@ -14,9 +14,12 @@ import {
   type VoiceConnection,
   type AudioPlayer,
 } from '@discordjs/voice';
-import ytdl from '@distube/ytdl-core';
+import { spawn, execFile } from 'child_process';
+import { promisify } from 'util';
 import { YouTube } from 'youtube-sr';
 import { logger } from '../../logger.js';
+
+const execFileAsync = promisify(execFile);
 
 export interface Track {
   title: string;
@@ -26,10 +29,30 @@ export interface Track {
   requestedBy: User;
 }
 
-function secondsToTimestamp(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
+/** Get direct audio stream URL via yt-dlp */
+async function getStreamUrl(videoUrl: string): Promise<string> {
+  const { stdout } = await execFileAsync('yt-dlp', [
+    '-f', 'bestaudio[ext=webm]/bestaudio/best',
+    '--no-playlist',
+    '-g',
+    videoUrl,
+  ]);
+  return stdout.trim().split('\n')[0];
+}
+
+/** Get video metadata via yt-dlp */
+async function getVideoInfo(videoUrl: string): Promise<{ title: string; duration: string; thumbnail: string }> {
+  const { stdout } = await execFileAsync('yt-dlp', [
+    '--dump-json',
+    '--no-playlist',
+    videoUrl,
+  ]);
+  const info = JSON.parse(stdout) as { title?: string; duration_string?: string; thumbnail?: string };
+  return {
+    title: info.title ?? 'Unknown',
+    duration: info.duration_string ?? '0:00',
+    thumbnail: info.thumbnail ?? '',
+  };
 }
 
 export class MusicQueue {
@@ -51,17 +74,12 @@ export class MusicQueue {
         this.playTrack(this.currentTrack);
         return;
       }
-
       if (this.loop === 'queue' && this.currentTrack) {
         this.tracks.push(this.currentTrack);
       }
-
       const next = this.tracks.shift();
-      if (next) {
-        this.playTrack(next);
-      } else {
-        this.currentTrack = null;
-      }
+      if (next) this.playTrack(next);
+      else this.currentTrack = null;
     });
 
     this.player.on('error', (err) => {
@@ -75,13 +93,23 @@ export class MusicQueue {
   async playTrack(track: Track): Promise<void> {
     this.currentTrack = track;
     try {
-      const stream = ytdl(track.url, {
-        filter: 'audioonly',
-        quality: 'highestaudio',
-        highWaterMark: 1 << 25,
-      });
-      this.resource = createAudioResource(stream, {
-        inputType: StreamType.Arbitrary,
+      const directUrl = await getStreamUrl(track.url);
+
+      const ffmpeg = spawn('ffmpeg', [
+        '-reconnect', '1',
+        '-reconnect_streamed', '1',
+        '-reconnect_delay_max', '5',
+        '-i', directUrl,
+        '-f', 's16le',
+        '-ar', '48000',
+        '-ac', '2',
+        'pipe:1',
+      ], { stdio: ['ignore', 'pipe', 'ignore'] });
+
+      ffmpeg.on('error', (err) => logger.error({ err }, 'ffmpeg error'));
+
+      this.resource = createAudioResource(ffmpeg.stdout!, {
+        inputType: StreamType.Raw,
         inlineVolume: true,
       });
       this.resource.volume?.setVolume(this.volume / 100);
@@ -94,17 +122,9 @@ export class MusicQueue {
     }
   }
 
-  skip(): void {
-    this.player.stop();
-  }
-
-  pause(): boolean {
-    return this.player.pause();
-  }
-
-  resume(): boolean {
-    return this.player.unpause();
-  }
+  skip(): void { this.player.stop(); }
+  pause(): boolean { return this.player.pause(); }
+  resume(): boolean { return this.player.unpause(); }
 
   setVolume(vol: number): void {
     this.volume = vol;
@@ -137,17 +157,11 @@ export class MusicManager {
     let trackInfo: { title: string; url: string; duration?: string; thumbnail?: string };
 
     try {
-      const isUrl = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)/.test(query);
+      const isYouTubeUrl = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)/.test(query);
 
-      if (isUrl) {
-        const info = await ytdl.getInfo(query);
-        const d = info.videoDetails;
-        trackInfo = {
-          title: d.title ?? 'Unknown',
-          url: d.video_url,
-          duration: secondsToTimestamp(parseInt(d.lengthSeconds ?? '0')),
-          thumbnail: d.thumbnails[0]?.url,
-        };
+      if (isYouTubeUrl) {
+        const info = await getVideoInfo(query);
+        trackInfo = { ...info, url: query };
       } else {
         const results = await YouTube.search(query, { limit: 1, type: 'video' });
         const video = results[0];
@@ -161,11 +175,10 @@ export class MusicManager {
       }
     } catch (err) {
       logger.error({ err }, 'Music search/info failed');
-      throw new Error('Could not find or play that track.');
+      throw new Error('Could not find that track.');
     }
 
     const track: Track = { ...trackInfo, requestedBy };
-
     let queue = this.queues.get(guild.id);
 
     if (!queue) {
