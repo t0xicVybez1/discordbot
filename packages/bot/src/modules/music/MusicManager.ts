@@ -135,11 +135,10 @@ export class MusicManager {
           thumbnail: info.video_details.thumbnails[0]?.url,
         };
       } else {
-        const results = await play.search(query, { limit: 5, source: { youtube: 'video' } });
+        const results = await play.search(query, { limit: 5 });
         const video = results.find((r) => r.url) ?? results[0];
         if (!video) throw new Error('No results found');
-        // Fallback: construct URL from ID if url is somehow undefined
-        const url = video.url ?? `https://www.youtube.com/watch?v=${video.id}`;
+        const url = video.url ?? `https://www.youtube.com/watch?v=${(video as { id?: string }).id}`;
         trackInfo = {
           title: video.title ?? 'Unknown',
           url,
@@ -147,7 +146,8 @@ export class MusicManager {
           thumbnail: video.thumbnails[0]?.url,
         };
       }
-    } catch {
+    } catch (err) {
+      logger.error({ err }, 'play-dl search/info failed');
       throw new Error('Could not find or play that track.');
     }
 
