@@ -56,6 +56,9 @@ bash scripts/setup-dev.sh
 ```
 
 ### 2. Configure Environment
+
+See **[docs/configuration.md](docs/configuration.md)** for a full step-by-step guide on where to find every value.
+
 Edit `.env` with your credentials:
 
 ```bash
