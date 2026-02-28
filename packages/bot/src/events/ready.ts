@@ -25,9 +25,20 @@ const event: BotEvent = {
       },
     }));
 
+    // Sync all current guilds to DB on startup
+    // (handles case where bot was already in guilds before DB tables were created)
+    const { ensureGuildExists, invalidateSettingsCache } = await import('../utils/settings.js');
+    for (const guild of client.guilds.cache.values()) {
+      try {
+        await ensureGuildExists(guild.id, guild.name, guild.ownerId, guild.iconURL() ?? undefined);
+      } catch (e) {
+        logger.error(`Failed to sync guild ${guild.id}: ${e}`);
+      }
+    }
+    logger.info(`Synced ${client.guilds.cache.size} guilds to database`);
+
     // Subscribe to settings reload events from API
     const { sub } = await import('../redis.js');
-    const { invalidateSettingsCache } = await import('../utils/settings.js');
 
     sub.on('message', (_channel, message) => {
       try {
