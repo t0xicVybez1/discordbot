@@ -7,12 +7,13 @@ import { SettingsSection } from '@/components/SettingsSection';
 import { Toggle } from '@/components/Toggle';
 import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
+import type { WelcomeConfig } from '@discordbot/shared';
 import { MessageSquare } from 'lucide-react';
 
 export default function WelcomePage() {
   const { guildId } = useParams() as { guildId: string };
   const queryClient = useQueryClient();
-  const [config, setConfig] = useState<Record<string, unknown>>({});
+  const [config, setConfig] = useState<Partial<WelcomeConfig>>({});
 
   const { data: configRes, isLoading } = useQuery({
     queryKey: ['welcome', guildId],
@@ -25,11 +26,11 @@ export default function WelcomePage() {
   });
 
   useEffect(() => {
-    if (configRes?.data?.data) setConfig(configRes.data.data as Record<string, unknown>);
+    if (configRes?.data?.data) setConfig(configRes.data.data as Partial<WelcomeConfig>);
   }, [configRes]);
 
   const mutation = useMutation({
-    mutationFn: (data: Record<string, unknown>) => settingsApi.updateWelcome(guildId, data),
+    mutationFn: (data: Partial<WelcomeConfig>) => settingsApi.updateWelcome(guildId, data),
     onSuccess: () => {
       toast.success('Welcome settings saved!');
       queryClient.invalidateQueries({ queryKey: ['welcome', guildId] });
@@ -37,7 +38,7 @@ export default function WelcomePage() {
     onError: () => toast.error('Failed to save welcome settings.'),
   });
 
-  const handleSave = (partial: Record<string, unknown>) => mutation.mutate(partial);
+  const handleSave = (partial: Partial<WelcomeConfig>) => mutation.mutate(partial);
 
   const channels = (channelsRes?.data?.data ?? []) as Array<{ id: string; name: string; type: number }>;
   const textChannels = channels.filter((c) => c.type === 0);
@@ -61,16 +62,16 @@ export default function WelcomePage() {
         <Toggle
           label="Enable Welcome Messages"
           description="Post a message in the welcome channel when someone joins"
-          enabled={(config.enabled as boolean) ?? false}
-          onChange={(v) => { setConfig((c) => ({ ...c, enabled: v })); handleSave({ enabled: v }); }}
+          enabled={config.welcomeEnabled ?? false}
+          onChange={(v) => { setConfig((c) => ({ ...c, welcomeEnabled: v })); handleSave({ welcomeEnabled: v }); }}
         />
         <div>
           <label className="label">Welcome Channel</label>
           <select
             className="input"
-            value={(config.channelId as string) ?? ''}
-            onChange={(e) => setConfig((c) => ({ ...c, channelId: e.target.value || undefined }))}
-            onBlur={() => handleSave({ channelId: config.channelId })}
+            value={config.welcomeChannelId ?? ''}
+            onChange={(e) => setConfig((c) => ({ ...c, welcomeChannelId: e.target.value || undefined }))}
+            onBlur={() => handleSave({ welcomeChannelId: config.welcomeChannelId })}
           >
             <option value="">Select a channel</option>
             {textChannels.map((ch) => (
@@ -82,13 +83,13 @@ export default function WelcomePage() {
           <label className="label">Welcome Message</label>
           <textarea
             className="input min-h-[80px] resize-y"
-            value={(config.message as string) ?? ''}
-            placeholder="Welcome {user} to {server}! You are member #{count}."
-            onChange={(e) => setConfig((c) => ({ ...c, message: e.target.value }))}
-            onBlur={() => handleSave({ message: config.message })}
+            value={config.welcomeMessage ?? ''}
+            placeholder="Welcome {user} to {server}!"
+            onChange={(e) => setConfig((c) => ({ ...c, welcomeMessage: e.target.value }))}
+            onBlur={() => handleSave({ welcomeMessage: config.welcomeMessage })}
           />
           <p className="text-xs text-gray-500 mt-1">
-            Variables: {'{user}'}, {'{username}'}, {'{server}'}, {'{count}'}
+            Variables: {'{user}'}, {'{username}'}, {'{server}'}
           </p>
         </div>
       </SettingsSection>
@@ -97,14 +98,14 @@ export default function WelcomePage() {
         <Toggle
           label="Enable Leave Messages"
           description="Post a message when someone leaves or is kicked"
-          enabled={(config.leaveEnabled as boolean) ?? false}
+          enabled={config.leaveEnabled ?? false}
           onChange={(v) => { setConfig((c) => ({ ...c, leaveEnabled: v })); handleSave({ leaveEnabled: v }); }}
         />
         <div>
           <label className="label">Leave Channel</label>
           <select
             className="input"
-            value={(config.leaveChannelId as string) ?? ''}
+            value={config.leaveChannelId ?? ''}
             onChange={(e) => setConfig((c) => ({ ...c, leaveChannelId: e.target.value || undefined }))}
             onBlur={() => handleSave({ leaveChannelId: config.leaveChannelId })}
           >
@@ -118,7 +119,7 @@ export default function WelcomePage() {
           <label className="label">Leave Message</label>
           <textarea
             className="input min-h-[80px] resize-y"
-            value={(config.leaveMessage as string) ?? ''}
+            value={config.leaveMessage ?? ''}
             placeholder="Goodbye {username}, we hope to see you again!"
             onChange={(e) => setConfig((c) => ({ ...c, leaveMessage: e.target.value }))}
             onBlur={() => handleSave({ leaveMessage: config.leaveMessage })}
