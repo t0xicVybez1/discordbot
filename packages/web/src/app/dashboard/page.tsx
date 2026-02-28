@@ -76,44 +76,56 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {guilds.map((guild: GuildOverview) => (
-              <Link
-                key={guild.id}
-                href={guild.botPresent ? `/dashboard/${guild.id}` : '#'}
-                className={`card hover:border-discord-blurple/50 transition-colors group ${
-                  !guild.botPresent ? 'opacity-60' : 'cursor-pointer'
-                }`}
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  {guild.iconUrl ? (
-                    <img src={guild.iconUrl} alt={guild.name} className="w-12 h-12 rounded-full" />
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-discord-blurple flex items-center justify-center text-white font-bold">
-                      {guild.name[0]}
+            {guilds.map((guild: GuildOverview) => {
+              const cardContent = (
+                <>
+                  <div className="flex items-center gap-3 mb-3">
+                    {guild.iconUrl ? (
+                      <img src={guild.iconUrl} alt={guild.name} className="w-12 h-12 rounded-full" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-discord-blurple flex items-center justify-center text-white font-bold">
+                        {guild.name[0]}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-semibold truncate group-hover:text-discord-blurple transition-colors">
+                        {guild.name}
+                      </p>
+                      <p className="text-gray-400 text-xs">{guild.memberCount?.toLocaleString() ?? '—'} members</p>
                     </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white font-semibold truncate group-hover:text-discord-blurple transition-colors">
-                      {guild.name}
-                    </p>
-                    <p className="text-gray-400 text-xs">{guild.memberCount?.toLocaleString() ?? '—'} members</p>
                   </div>
+                  {guild.botPresent ? (
+                    <span className="badge-success">● Bot Active</span>
+                  ) : (
+                    <a
+                      href={`https://discord.com/api/oauth2/authorize?client_id=${process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID}&guild_id=${guild.id}&permissions=8&scope=bot%20applications.commands`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="btn-primary text-xs py-1"
+                    >
+                      Invite Bot
+                    </a>
+                  )}
+                </>
+              );
+
+              return guild.botPresent ? (
+                <Link
+                  key={guild.id}
+                  href={`/dashboard/${guild.id}`}
+                  className="card hover:border-discord-blurple/50 transition-colors group cursor-pointer"
+                >
+                  {cardContent}
+                </Link>
+              ) : (
+                <div
+                  key={guild.id}
+                  className="card hover:border-discord-blurple/50 transition-colors group opacity-60"
+                >
+                  {cardContent}
                 </div>
-                {guild.botPresent ? (
-                  <span className="badge-success">● Bot Active</span>
-                ) : (
-                  <a
-                    href={`https://discord.com/api/oauth2/authorize?client_id=${process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID}&guild_id=${guild.id}&permissions=8&scope=bot%20applications.commands`}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="btn-primary text-xs py-1"
-                  >
-                    Invite Bot
-                  </a>
-                )}
-              </Link>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
