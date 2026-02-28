@@ -20,6 +20,16 @@ const TYPE_LABELS: Record<string, string> = {
   channel_delete: 'Channel Deleted',
 };
 
+function getDetails(type: string, data: Record<string, unknown> | null): string {
+  if (!data) return '—';
+  if (type === 'message_edit' || type === 'message_delete') {
+    return data.channelId ? `#${data.channelId}` : '—';
+  }
+  if (type.startsWith('member_') && data.reason) return String(data.reason);
+  if (data.userTag) return String(data.userTag);
+  return '—';
+}
+
 export default function LogsPage() {
   const { guildId } = useParams() as { guildId: string };
 
@@ -33,7 +43,6 @@ export default function LogsPage() {
     id: string;
     type: string;
     userId: string | null;
-    targetId: string | null;
     data: Record<string, unknown> | null;
     createdAt: string;
   }>;
@@ -61,8 +70,8 @@ export default function LogsPage() {
           <thead className="bg-discord-darkest-bg">
             <tr>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase">Event</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase">User</th>
-              <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase">Target</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase">User ID</th>
+              <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase">Details</th>
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase">Time</th>
             </tr>
           </thead>
@@ -84,8 +93,8 @@ export default function LogsPage() {
                   <td className="px-4 py-3 text-sm text-gray-400 font-mono">
                     {log.userId ?? '—'}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-400 font-mono">
-                    {log.targetId ?? '—'}
+                  <td className="px-4 py-3 text-sm text-gray-400">
+                    {getDetails(log.type, log.data)}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-400">
                     {new Date(log.createdAt).toLocaleString()}

@@ -89,8 +89,8 @@ export default function GuildOverviewPage() {
             ].map((feature) => (
               <div key={feature.key} className="flex items-center justify-between">
                 <span className="text-sm text-gray-300">{feature.label}</span>
-                <span className={`badge ${(guild as Record<string, unknown>)?.[feature.key] ? 'badge-success' : 'badge-danger'}`}>
-                  {(guild as Record<string, unknown>)?.[feature.key] ? 'Enabled' : 'Disabled'}
+                <span className={`badge ${(guild as Record<string, unknown>)?.settings && ((guild as Record<string, Record<string, unknown>>).settings)?.[feature.key] ? 'badge-success' : 'badge-danger'}`}>
+                  {(guild as Record<string, unknown>)?.settings && ((guild as Record<string, Record<string, unknown>>).settings)?.[feature.key] ? 'Enabled' : 'Disabled'}
                 </span>
               </div>
             ))}

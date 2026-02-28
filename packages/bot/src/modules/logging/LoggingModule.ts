@@ -34,10 +34,12 @@ export class LoggingModule {
       }
 
       // Save to database
+      const userId = (data.userId ?? data.authorId) as string | undefined;
       await prisma.logEntry.create({
         data: {
           guildId: guild.id,
           type,
+          userId: userId ?? null,
           data: data as object,
         },
       });

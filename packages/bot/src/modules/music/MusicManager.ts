@@ -157,6 +157,7 @@ export class MusicManager {
         channelId: voiceChannel.id,
         guildId: guild.id,
         adapterCreator: guild.voiceAdapterCreator,
+        selfDeaf: false,
       });
 
       connection.on('stateChange', (oldState, newState) => {
