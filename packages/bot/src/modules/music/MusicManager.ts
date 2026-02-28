@@ -135,13 +135,16 @@ export class MusicManager {
           thumbnail: info.video_details.thumbnails[0]?.url,
         };
       } else {
-        const results = await play.search(query, { limit: 1 });
-        if (!results[0]) throw new Error('No results found');
+        const results = await play.search(query, { limit: 5, source: { youtube: 'video' } });
+        const video = results.find((r) => r.url) ?? results[0];
+        if (!video) throw new Error('No results found');
+        // Fallback: construct URL from ID if url is somehow undefined
+        const url = video.url ?? `https://www.youtube.com/watch?v=${video.id}`;
         trackInfo = {
-          title: results[0].title ?? 'Unknown',
-          url: results[0].url,
-          duration: results[0].durationRaw,
-          thumbnail: results[0].thumbnails[0]?.url,
+          title: video.title ?? 'Unknown',
+          url,
+          duration: video.durationRaw,
+          thumbnail: video.thumbnails[0]?.url,
         };
       }
     } catch {
