@@ -27,12 +27,12 @@ const event: BotEvent = {
 
     // Subscribe to settings reload events from API
     const { sub } = await import('../redis.js');
-    await sub.subscribe('api:events', (message) => {
+    const { invalidateSettingsCache } = await import('../utils/settings.js');
+
+    sub.on('message', (_channel, message) => {
       try {
         const event = JSON.parse(message);
         if (event.type === 'settings:reload') {
-          // Invalidate cache for the guild
-          const { invalidateSettingsCache } = require('../utils/settings.js');
           invalidateSettingsCache(event.data.guildId);
           logger.debug(`Settings cache invalidated for guild ${event.data.guildId}`);
         }
@@ -40,6 +40,8 @@ const event: BotEvent = {
         logger.error('Failed to process API event');
       }
     });
+
+    await sub.subscribe('api:events');
 
     logger.info(`Bot ready! Serving ${client.guilds.cache.size} guilds`);
   },
