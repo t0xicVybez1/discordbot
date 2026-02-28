@@ -18,12 +18,19 @@ fi
 echo "Installing dependencies..."
 pnpm install
 
+# Build shared workspace packages (required before running bot/api)
+echo "Building shared packages..."
+pnpm build:deps
+
 # Start infrastructure
 echo "Starting PostgreSQL and Redis..."
 docker compose up -d postgres redis lavalink
 
-echo "Waiting for database..."
-sleep 3
+echo "Waiting for database to be ready..."
+for i in $(seq 1 30); do
+  docker compose exec -T postgres pg_isready -U discordbot -q 2>/dev/null && break
+  sleep 1
+done
 
 # Generate Prisma client
 echo "Generating Prisma client..."

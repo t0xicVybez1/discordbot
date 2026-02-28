@@ -8,7 +8,8 @@
     "pnpm": ">=9.0.0"
   },
   "scripts": {
-    "dev": "concurrently \"pnpm --filter @discordbot/api dev\" \"pnpm --filter @discordbot/bot dev\" \"pnpm --filter @discordbot/web dev\"",
+    "build:deps": "pnpm --filter @discordbot/shared build && pnpm --filter @discordbot/addon-sdk build",
+    "dev": "pnpm build:deps && concurrently \"pnpm --filter @discordbot/api dev\" \"pnpm --filter @discordbot/bot dev\" \"pnpm --filter @discordbot/web dev\"",
     "build": "pnpm --filter @discordbot/shared build && pnpm --filter @discordbot/addon-sdk build && pnpm --filter @discordbot/api build && pnpm --filter @discordbot/bot build && pnpm --filter @discordbot/web build",
     "start": "concurrently \"pnpm --filter @discordbot/api start\" \"pnpm --filter @discordbot/bot start\" \"pnpm --filter @discordbot/web start\"",
     "lint": "pnpm -r lint",

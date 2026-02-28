@@ -122,6 +122,10 @@ fi
 echo -e "${BLUE}[INFO]${NC}  Installing npm dependencies..."
 pnpm install --silent
 
+# Build shared workspace packages (required before running bot/api)
+echo -e "${BLUE}[INFO]${NC}  Building shared packages..."
+pnpm build:deps
+
 # Start infra
 echo -e "${BLUE}[INFO]${NC}  Starting PostgreSQL, Redis, Lavalink..."
 docker compose up -d postgres redis lavalink
