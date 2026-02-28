@@ -29,15 +29,20 @@ export interface Track {
   requestedBy: User;
 }
 
-const YTDLP_BASE_ARGS = [
-  '--extractor-args', 'youtube:player_client=ios,mweb',
-  '--no-playlist',
-];
+function ytdlpBaseArgs(): string[] {
+  const args = [
+    '--extractor-args', 'youtube:player_client=ios,mweb',
+    '--no-playlist',
+  ];
+  const cookiesFile = process.env.YOUTUBE_COOKIES_FILE;
+  if (cookiesFile) args.push('--cookies', cookiesFile);
+  return args;
+}
 
 /** Get direct audio stream URL via yt-dlp */
 async function getStreamUrl(videoUrl: string): Promise<string> {
   const { stdout } = await execFileAsync('yt-dlp', [
-    ...YTDLP_BASE_ARGS,
+    ...ytdlpBaseArgs(),
     '-f', 'bestaudio[ext=webm]/bestaudio/best',
     '-g',
     videoUrl,
@@ -48,7 +53,7 @@ async function getStreamUrl(videoUrl: string): Promise<string> {
 /** Get video metadata via yt-dlp */
 async function getVideoInfo(videoUrl: string): Promise<{ title: string; duration: string; thumbnail: string }> {
   const { stdout } = await execFileAsync('yt-dlp', [
-    ...YTDLP_BASE_ARGS,
+    ...ytdlpBaseArgs(),
     '--dump-json',
     videoUrl,
   ]);
