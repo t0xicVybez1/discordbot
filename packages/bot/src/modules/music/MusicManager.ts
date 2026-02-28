@@ -31,7 +31,7 @@ export interface Track {
 
 function ytdlpBaseArgs(): string[] {
   const args = [
-    '--extractor-args', 'youtube:player_client=ios,mweb',
+    '--extractor-args', 'youtube:player_client=web,tv_embedded',
     '--no-playlist',
   ];
   const cookiesFile = process.env.YOUTUBE_COOKIES_FILE;
