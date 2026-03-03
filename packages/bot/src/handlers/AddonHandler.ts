@@ -184,14 +184,19 @@ export class AddonHandler {
     // Register event handlers
     if (definition.events) {
       for (const eventDef of definition.events) {
-        const handler = (...args: unknown[]) => eventDef.handler(context, ...(args as Parameters<typeof eventDef.handler>));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const handler = (...args: any[]) => eventDef.handler(context, ...args);
 
         if (eventDef.once) {
-          this.client.once(eventDef.event, handler as (...args: unknown[]) => void);
-          unsubscribers.push(() => this.client.off(eventDef.event, handler as (...args: unknown[]) => void));
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          this.client.once(eventDef.event, handler as any);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          unsubscribers.push(() => this.client.off(eventDef.event, handler as any));
         } else {
-          this.client.on(eventDef.event, handler as (...args: unknown[]) => void);
-          unsubscribers.push(() => this.client.off(eventDef.event, handler as (...args: unknown[]) => void));
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          this.client.on(eventDef.event, handler as any);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          unsubscribers.push(() => this.client.off(eventDef.event, handler as any));
         }
       }
     }

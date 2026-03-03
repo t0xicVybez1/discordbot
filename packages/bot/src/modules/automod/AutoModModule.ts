@@ -114,12 +114,14 @@ export class AutoModModule {
       await message.delete().catch(() => null);
 
       if (action === 'warn' || action === 'mute' || action === 'kick' || action === 'ban') {
-        await message.channel
-          .send({
-            content: `<@${message.author.id}> Your message was removed: **${reason}**`,
-          })
-          .then((m) => setTimeout(() => m.delete().catch(() => null), 5000))
-          .catch(() => null);
+        if ('send' in message.channel) {
+          await (message.channel as import('discord.js').TextChannel)
+            .send({
+              content: `<@${message.author.id}> Your message was removed: **${reason}**`,
+            })
+            .then((m: import('discord.js').Message) => setTimeout(() => m.delete().catch(() => null), 5000))
+            .catch(() => null);
+        }
       }
 
       if (action === 'mute' && message.member) {

@@ -1,5 +1,6 @@
 import type {
   SlashCommandBuilder,
+  SlashCommandOptionsOnlyBuilder,
   ChatInputCommandInteraction,
   ContextMenuCommandBuilder,
   AutocompleteInteraction,
@@ -11,7 +12,7 @@ import type {
 import type { BotClient } from './client.js';
 
 export interface BotCommand {
-  data: SlashCommandBuilder | ContextMenuCommandBuilder | Omit<SlashCommandBuilder, 'addSubcommand' | 'addSubcommandGroup'>;
+  data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder | ContextMenuCommandBuilder;
   category: string;
   cooldown?: number;
   ownerOnly?: boolean;
@@ -27,5 +28,6 @@ export interface BotCommand {
 export interface BotEvent {
   name: string;
   once?: boolean;
-  execute: (...args: unknown[]) => Promise<void> | void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  execute: (...args: any[]) => Promise<void> | void;
 }

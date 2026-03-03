@@ -26,7 +26,7 @@ async function deployCommands() {
       const module = await import(fileUrl);
       const command: BotCommand = module.default ?? module.command;
       if (command?.data) {
-        commands.push(command.data.toJSON());
+        commands.push(command.data.toJSON() as RESTPostAPIChatInputApplicationCommandsJSONBody);
         console.log(`Found command: ${command.data.name}`);
       }
     }

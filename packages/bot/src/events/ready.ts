@@ -40,7 +40,7 @@ const event: BotEvent = {
     // Subscribe to settings reload events from API
     const { sub } = await import('../redis.js');
 
-    sub.on('message', (_channel, message) => {
+    sub.on('message', (_channel: string, message: string) => {
       try {
         const event = JSON.parse(message);
         if (event.type === 'settings:reload') {
