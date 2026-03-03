@@ -232,7 +232,7 @@ export class MusicManager {
       });
 
       connection.on('stateChange', (oldState, newState) => {
-        logger.debug(`Voice connection: ${oldState.status} -> ${newState.status}`);
+        logger.info(`Voice connection: ${oldState.status} -> ${newState.status}`);
       });
 
       try {
