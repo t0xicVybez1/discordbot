@@ -238,9 +238,11 @@ export class MusicManager {
       try {
         await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
       } catch (err) {
-        logger.error({ status: connection.state.status, err }, 'Voice connection failed to reach Ready state');
+        const failedStatus = connection.state.status;
+        logger.error({ status: failedStatus, err }, 'Voice connection failed to reach Ready state');
         connection.destroy();
-        throw new Error(`Could not connect to voice channel (stuck at: ${connection.state.status}).`);
+        this.queues.delete(guild.id);
+        throw new Error(`Could not connect to voice channel (stuck at: ${failedStatus}).`);
       }
 
       connection.on(VoiceConnectionStatus.Disconnected, async () => {
