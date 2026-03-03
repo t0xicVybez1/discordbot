@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authApi } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 
-export default function CallbackPage() {
+function CallbackHandler() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
@@ -68,5 +68,26 @@ export default function CallbackPage() {
         <p className="text-gray-400">Please wait while we complete authentication.</p>
       </div>
     </div>
+  );
+}
+
+export default function CallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-discord-darkest-bg flex items-center justify-center p-4">
+        <div className="card max-w-md w-full text-center">
+          <div className="flex justify-center mb-4">
+            <svg className="animate-spin h-10 w-10 text-discord-blurple" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          </div>
+          <h1 className="text-xl font-bold text-white mb-2">Logging you in...</h1>
+          <p className="text-gray-400">Please wait while we complete authentication.</p>
+        </div>
+      </div>
+    }>
+      <CallbackHandler />
+    </Suspense>
   );
 }
