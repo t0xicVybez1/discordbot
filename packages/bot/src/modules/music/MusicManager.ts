@@ -235,6 +235,10 @@ export class MusicManager {
         logger.info(`Voice connection: ${oldState.status} -> ${newState.status}`);
       });
 
+      connection.on('debug', (msg) => {
+        logger.info({ msg }, 'Voice WS debug');
+      });
+
       try {
         await entersState(connection, VoiceConnectionStatus.Ready, 30_000);
       } catch (err) {

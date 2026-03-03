@@ -27,6 +27,7 @@
     "youtube-sr": "^4.3.11",
     "@discordjs/voice": "^0.18.0",
     "libsodium-wrappers": "^0.7.15",
+    "sodium-native": "^4.3.2",
     "mediaplex": "^0.0.8",
     "opusscript": "^0.1.1"
   },
