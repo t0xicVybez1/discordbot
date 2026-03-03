@@ -237,7 +237,7 @@ export class MusicManager {
       });
 
       connection.on('debug', (msg) => {
-        logger.info({ msg }, 'Voice WS debug');
+        logger.info(`[Voice WS] ${msg}`);
       });
 
       try {
