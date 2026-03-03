@@ -229,6 +229,7 @@ export class MusicManager {
         guildId: guild.id,
         adapterCreator: guild.voiceAdapterCreator,
         selfDeaf: false,
+        debug: true,
       });
 
       connection.on('stateChange', (oldState, newState) => {
