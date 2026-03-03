@@ -1,6 +1,11 @@
 import type { FastifyInstance } from 'fastify';
-import type { WebSocket } from 'ws';
 import { sub, pub } from '../redis.js';
+
+interface WebSocket {
+  readyState: number;
+  send(data: string): void;
+  close(): void;
+}
 import { logger } from '../logger.js';
 import type { WebSocketEvent } from '@discordbot/shared';
 
@@ -18,7 +23,7 @@ export async function setupWebSocket(server: FastifyInstance): Promise<void> {
   await sub.subscribe('bot:events');
   await sub.subscribe('api:ws:broadcast');
 
-  sub.on('message', (channel, message) => {
+  sub.on('message', (channel: string, message: string) => {
     try {
       const event = JSON.parse(message) as WebSocketEvent;
       broadcastEvent(event);

@@ -2,9 +2,9 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../database.js';
 import { config } from '../config.js';
 
-declare module 'fastify' {
-  interface FastifyRequest {
-    user?: {
+declare module '@fastify/jwt' {
+  interface FastifyJWT {
+    user: {
       id: string;
       username: string;
       isStaff: boolean;
@@ -16,7 +16,7 @@ declare module 'fastify' {
 export async function requireAuth(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   try {
     await request.jwtVerify();
-    const payload = request.user as { sub: string };
+    const payload = request.user as unknown as { sub: string };
 
     const user = await prisma.portalUser.findUnique({ where: { id: payload.sub } });
     if (!user) {

@@ -1,11 +1,11 @@
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 import { config } from './config.js';
 
 export const redis = new Redis(config.redis.url, {
   password: config.redis.password || undefined,
   lazyConnect: true,
   maxRetriesPerRequest: 3,
-  retryStrategy: (times) => Math.min(times * 1000, 5000),
+  retryStrategy: (times: number) => Math.min(times * 1000, 5000),
 });
 
 export const pub = new Redis(config.redis.url, {

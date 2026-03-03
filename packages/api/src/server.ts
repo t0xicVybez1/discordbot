@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { type FastifyError } from 'fastify';
 import fastifyCors from '@fastify/cors';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyRateLimit from '@fastify/rate-limit';
@@ -81,7 +81,7 @@ export async function createServer() {
   }));
 
   // ─── Error Handler ────────────────────────────────────────────────
-  server.setErrorHandler((error, request, reply) => {
+  server.setErrorHandler((error: FastifyError, request, reply) => {
     logger.error({ err: error, url: request.url }, 'Request error');
 
     if (error.validation) {

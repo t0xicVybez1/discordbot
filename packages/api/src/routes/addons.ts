@@ -88,7 +88,8 @@ export async function addonRoutes(server: FastifyInstance): Promise<void> {
   // PATCH /guilds/:guildId/addons/:addonId/settings
   server.patch('/guilds/:guildId/addons/:addonId/settings', { preHandler: [requireGuildAdmin] }, async (request, reply) => {
     const { guildId, addonId } = request.params as { guildId: string; addonId: string };
-    const settings = request.body as Record<string, unknown>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const settings = request.body as any;
 
     const guildAddon = await prisma.guildAddon.update({
       where: { guildId_addonId: { guildId, addonId } },
@@ -99,7 +100,7 @@ export async function addonRoutes(server: FastifyInstance): Promise<void> {
     // Notify bot of settings update
     await pub.publish('api:events', JSON.stringify({
       type: 'addon:settings-update',
-      data: { guildId, addonName: guildAddon.addon.name, settings },
+      data: { guildId, addonName: guildAddon.addon?.name ?? addonId, settings },
     }));
 
     return reply.send({ success: true, data: guildAddon.settings });
