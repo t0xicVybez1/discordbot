@@ -14,13 +14,9 @@ import {
   type VoiceConnection,
   type AudioPlayer,
 } from '@discordjs/voice';
-import { spawn, execFile } from 'child_process';
-import { promisify } from 'util';
-import play from 'play-dl';
+import { spawn } from 'child_process';
 import { YouTube } from 'youtube-sr';
 import { logger } from '../../logger.js';
-
-const execFileAsync = promisify(execFile);
 
 export interface Track {
   title: string;
@@ -30,85 +26,69 @@ export interface Track {
   requestedBy: User;
 }
 
+// Public Invidious instances — tried in order, first success wins.
+// Invidious solves YouTube's signature/n-challenge server-side and returns
+// a direct, pre-signed CDN URL we can feed straight to ffmpeg.
+const INVIDIOUS_INSTANCES = [
+  'https://inv.nadeko.net',
+  'https://invidious.nerdvpn.de',
+  'https://iv.datura.network',
+  'https://yt.artemislena.eu',
+  'https://invidious.privacyredirect.com',
+];
+
 const YT_URL_RE = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)/;
-const SC_URL_RE = /^https?:\/\/(www\.)?soundcloud\.com/;
 
-// Player clients tried in order for YouTube fallback.
-// android_embedded returns pre-signed CDN URLs that skip n-challenge solving.
-const YT_PLAYER_CLIENTS = ['android_embedded', 'android_vr', 'tv_embedded', 'ios', 'web'] as const;
-
-let scInitialized = false;
-async function ensureScInit(): Promise<void> {
-  if (scInitialized) return;
-  try {
-    await play.setToken({ soundcloud: { client_id: 'auto' } });
-    scInitialized = true;
-    logger.debug('SoundCloud client initialized');
-  } catch (err) {
-    logger.warn({ err }, 'SoundCloud auto client_id failed, continuing without');
-    scInitialized = true; // don't retry on every call
-  }
+function extractVideoId(url: string): string | null {
+  const m = url.match(/(?:v=|youtu\.be\/|shorts\/)([a-zA-Z0-9_-]{11})/);
+  return m?.[1] ?? null;
 }
 
-function formatDuration(secs: number): string {
-  const m = Math.floor(secs / 60);
-  const s = secs % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
+interface InvidiousResponse {
+  adaptiveFormats?: Array<{ url: string; type: string; bitrate?: string }>;
+  formatStreams?: Array<{ url: string; type: string }>;
 }
 
-/** Search SoundCloud and return first result */
-async function searchSoundCloud(query: string): Promise<{ title: string; url: string; duration?: string; thumbnail?: string }> {
-  await ensureScInit();
-  const results = await play.search(query, { source: { soundcloud: 'tracks' }, limit: 1 });
-  const track = results[0];
-  if (!track || track.url === undefined) throw new Error('No SoundCloud results found');
-  const sc = track as { name?: string; url: string; durationInSec?: number; thumbnail?: string };
-  return {
-    title: sc.name ?? 'Unknown',
-    url: sc.url,
-    duration: sc.durationInSec ? formatDuration(sc.durationInSec) : undefined,
-    thumbnail: sc.thumbnail,
-  };
-}
+/** Get a direct audio stream URL via the Invidious public API */
+async function getStreamUrl(videoUrl: string): Promise<string> {
+  const videoId = extractVideoId(videoUrl);
+  if (!videoId) throw new Error(`Cannot extract video ID from: ${videoUrl}`);
 
-/** Get SoundCloud track info from URL */
-async function getSoundCloudInfo(url: string): Promise<{ title: string; url: string; duration?: string; thumbnail?: string }> {
-  await ensureScInit();
-  const info = await play.soundcloud(url);
-  return {
-    title: info.name ?? 'Unknown',
-    url: info.url,
-    duration: 'durationInSec' in info ? formatDuration((info as unknown as { durationInSec: number }).durationInSec) : undefined,
-    thumbnail: 'thumbnail' in info ? (info as unknown as { thumbnail?: string }).thumbnail : undefined,
-  };
-}
-
-/** Get YouTube stream URL via yt-dlp with multi-client fallback */
-async function getYouTubeStreamUrl(videoUrl: string): Promise<string> {
-  const cookiesFile = process.env.YOUTUBE_COOKIES_FILE;
-  for (const client of YT_PLAYER_CLIENTS) {
+  for (const instance of INVIDIOUS_INSTANCES) {
     try {
-      const args = [
-        '--extractor-args', `youtube:player_client=${client}`,
-        '--no-playlist',
-        '--no-warnings',
-        '-f', 'bestaudio[ext=webm]/bestaudio/best',
-        '-g',
-      ];
-      if (cookiesFile) args.push('--cookies', cookiesFile);
-      args.push(videoUrl);
-      const { stdout } = await execFileAsync('yt-dlp', args, { timeout: 30_000 });
-      const url = stdout.trim().split('\n')[0];
-      if (url && url.startsWith('http')) {
-        logger.debug({ client }, 'YouTube stream URL obtained');
-        return url;
+      const res = await fetch(`${instance}/api/v1/videos/${videoId}`, {
+        signal: AbortSignal.timeout(12_000),
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      });
+
+      if (!res.ok) {
+        logger.debug({ instance, status: res.status }, 'Invidious returned error');
+        continue;
+      }
+
+      const data = await res.json() as InvidiousResponse;
+
+      // Prefer audio-only adaptive formats (opus/webm or aac/mp4), sorted by bitrate
+      const audioFormats = (data.adaptiveFormats ?? [])
+        .filter(f => f.type.startsWith('audio/'))
+        .sort((a, b) => parseInt(b.bitrate ?? '0') - parseInt(a.bitrate ?? '0'));
+
+      if (audioFormats[0]?.url) {
+        logger.debug({ instance, videoId, type: audioFormats[0].type }, 'Invidious: got audio stream');
+        return audioFormats[0].url;
+      }
+
+      // Fallback: combined video+audio format
+      if (data.formatStreams?.[0]?.url) {
+        logger.debug({ instance, videoId }, 'Invidious: falling back to combined format');
+        return data.formatStreams[0].url;
       }
     } catch (err) {
-      const stderr = (err as { stderr?: string }).stderr ?? '';
-      logger.debug({ client, stderr: stderr.slice(0, 300) }, `yt-dlp client ${client} failed`);
+      logger.debug({ instance, err: String(err) }, 'Invidious instance failed, trying next');
     }
   }
-  throw new Error('yt-dlp failed with all player clients');
+
+  throw new Error('All Invidious instances failed to provide a stream URL');
 }
 
 export class MusicQueue {
@@ -149,49 +129,34 @@ export class MusicQueue {
   async playTrack(track: Track): Promise<void> {
     this.currentTrack = track;
     try {
-      if (YT_URL_RE.test(track.url)) {
-        await this.playYouTube(track.url);
-      } else {
-        await this.playSoundCloud(track.url);
-      }
+      const directUrl = await getStreamUrl(track.url);
+
+      // ffmpeg decodes any format (opus/webm, aac/mp4, etc.) and outputs raw PCM
+      const ffmpeg = spawn('ffmpeg', [
+        '-reconnect', '1',
+        '-reconnect_streamed', '1',
+        '-reconnect_delay_max', '5',
+        '-i', directUrl,
+        '-f', 's16le',
+        '-ar', '48000',
+        '-ac', '2',
+        'pipe:1',
+      ], { stdio: ['ignore', 'pipe', 'ignore'] });
+
+      ffmpeg.on('error', (err) => logger.error({ err }, 'ffmpeg error'));
+
+      this.resource = createAudioResource(ffmpeg.stdout!, {
+        inputType: StreamType.Raw,
+        inlineVolume: true,
+      });
+      this.resource.volume?.setVolume(this.volume / 100);
+      this.player.play(this.resource);
     } catch (err) {
       logger.error({ err }, 'Failed to play track');
       const next = this.tracks.shift();
       if (next) this.playTrack(next);
       else this.currentTrack = null;
     }
-  }
-
-  private async playSoundCloud(url: string): Promise<void> {
-    await ensureScInit();
-    const stream = await play.stream(url);
-    this.resource = createAudioResource(stream.stream, {
-      inputType: StreamType.Arbitrary,
-      inlineVolume: true,
-    });
-    this.resource.volume?.setVolume(this.volume / 100);
-    this.player.play(this.resource);
-  }
-
-  private async playYouTube(url: string): Promise<void> {
-    const directUrl = await getYouTubeStreamUrl(url);
-    const ffmpeg = spawn('ffmpeg', [
-      '-reconnect', '1',
-      '-reconnect_streamed', '1',
-      '-reconnect_delay_max', '5',
-      '-i', directUrl,
-      '-f', 's16le',
-      '-ar', '48000',
-      '-ac', '2',
-      'pipe:1',
-    ], { stdio: ['ignore', 'pipe', 'ignore'] });
-    ffmpeg.on('error', (err) => logger.error({ err }, 'ffmpeg error'));
-    this.resource = createAudioResource(ffmpeg.stdout!, {
-      inputType: StreamType.Raw,
-      inlineVolume: true,
-    });
-    this.resource.volume?.setVolume(this.volume / 100);
-    this.player.play(this.resource);
   }
 
   skip(): void { this.player.stop(); }
@@ -230,7 +195,7 @@ export class MusicManager {
 
     try {
       if (YT_URL_RE.test(query)) {
-        // YouTube URL — get metadata from youtube-sr, stream via yt-dlp
+        // Direct YouTube URL — get metadata from youtube-sr
         const video = await YouTube.getVideo(query);
         trackInfo = {
           title: video?.title ?? 'Unknown',
@@ -238,12 +203,17 @@ export class MusicManager {
           duration: video?.durationFormatted,
           thumbnail: video?.thumbnail?.url,
         };
-      } else if (SC_URL_RE.test(query)) {
-        // SoundCloud URL
-        trackInfo = await getSoundCloudInfo(query);
       } else {
-        // Search query — default to SoundCloud
-        trackInfo = await searchSoundCloud(query);
+        // Search query — search YouTube for metadata, stream via Invidious
+        const results = await YouTube.search(query, { limit: 1, type: 'video' });
+        const video = results[0];
+        if (!video?.url) throw new Error('No results found');
+        trackInfo = {
+          title: video.title ?? 'Unknown',
+          url: video.url,
+          duration: video.durationFormatted,
+          thumbnail: video.thumbnail?.url,
+        };
       }
     } catch (err) {
       logger.error({ err }, 'Music search/info failed');
