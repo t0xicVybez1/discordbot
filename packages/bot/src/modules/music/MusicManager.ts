@@ -26,69 +26,35 @@ export interface Track {
   requestedBy: User;
 }
 
-// Public Invidious instances — tried in order, first success wins.
-// Invidious solves YouTube's signature/n-challenge server-side and returns
-// a direct, pre-signed CDN URL we can feed straight to ffmpeg.
-const INVIDIOUS_INSTANCES = [
-  'https://inv.nadeko.net',
-  'https://invidious.nerdvpn.de',
-  'https://iv.datura.network',
-  'https://yt.artemislena.eu',
-  'https://invidious.privacyredirect.com',
-];
-
 const YT_URL_RE = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)/;
 
-function extractVideoId(url: string): string | null {
-  const m = url.match(/(?:v=|youtu\.be\/|shorts\/)([a-zA-Z0-9_-]{11})/);
-  return m?.[1] ?? null;
-}
+/** Get a direct audio stream URL via yt-dlp */
+function getStreamUrl(videoUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('yt-dlp', [
+      '--get-url',
+      '-f', 'bestaudio[ext=webm]/bestaudio/best',
+      '--no-playlist',
+      videoUrl,
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
 
-interface InvidiousResponse {
-  adaptiveFormats?: Array<{ url: string; type: string; bitrate?: string }>;
-  formatStreams?: Array<{ url: string; type: string }>;
-}
+    let url = '';
+    let stderr = '';
 
-/** Get a direct audio stream URL via the Invidious public API */
-async function getStreamUrl(videoUrl: string): Promise<string> {
-  const videoId = extractVideoId(videoUrl);
-  if (!videoId) throw new Error(`Cannot extract video ID from: ${videoUrl}`);
+    proc.stdout.on('data', (d: Buffer) => { url += d.toString(); });
+    proc.stderr.on('data', (d: Buffer) => { stderr += d.toString(); });
 
-  for (const instance of INVIDIOUS_INSTANCES) {
-    try {
-      const res = await fetch(`${instance}/api/v1/videos/${videoId}`, {
-        signal: AbortSignal.timeout(12_000),
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-      });
-
-      if (!res.ok) {
-        logger.debug({ instance, status: res.status }, 'Invidious returned error');
-        continue;
+    proc.on('close', (code: number | null) => {
+      const trimmed = url.trim().split('\n')[0];
+      if (code === 0 && trimmed) {
+        resolve(trimmed);
+      } else {
+        reject(new Error(`yt-dlp failed (code ${code}): ${stderr.slice(0, 200)}`));
       }
+    });
 
-      const data = await res.json() as InvidiousResponse;
-
-      // Prefer audio-only adaptive formats (opus/webm or aac/mp4), sorted by bitrate
-      const audioFormats = (data.adaptiveFormats ?? [])
-        .filter(f => f.type.startsWith('audio/'))
-        .sort((a, b) => parseInt(b.bitrate ?? '0') - parseInt(a.bitrate ?? '0'));
-
-      if (audioFormats[0]?.url) {
-        logger.debug({ instance, videoId, type: audioFormats[0].type }, 'Invidious: got audio stream');
-        return audioFormats[0].url;
-      }
-
-      // Fallback: combined video+audio format
-      if (data.formatStreams?.[0]?.url) {
-        logger.debug({ instance, videoId }, 'Invidious: falling back to combined format');
-        return data.formatStreams[0].url;
-      }
-    } catch (err) {
-      logger.debug({ instance, err: String(err) }, 'Invidious instance failed, trying next');
-    }
-  }
-
-  throw new Error('All Invidious instances failed to provide a stream URL');
+    proc.on('error', (err: Error) => reject(new Error(`yt-dlp not found: ${err.message}`)));
+  });
 }
 
 export class MusicQueue {
