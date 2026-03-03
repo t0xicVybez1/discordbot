@@ -31,15 +31,6 @@ async function main() {
   // Login
   await client.login(config.discord.token);
 
-  // Temporary voice diagnostic: confirm Discord gateway is sending voice events
-  client.on('raw' as never, (packet: { t: string; d?: Record<string, unknown> }) => {
-    if (packet.t === 'VOICE_SERVER_UPDATE') {
-      logger.info({ event: packet.t, endpoint: packet.d?.endpoint }, 'Voice gateway packet received by discord.js');
-    } else if (packet.t === 'VOICE_STATE_UPDATE') {
-      logger.info({ event: packet.t }, 'Voice gateway packet received by discord.js');
-    }
-  });
-
   // Graceful shutdown
   const shutdown = async (signal: string) => {
     logger.info(`Received ${signal}, shutting down gracefully...`);

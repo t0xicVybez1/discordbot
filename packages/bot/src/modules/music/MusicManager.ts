@@ -195,15 +195,6 @@ export class MusicManager {
         guildId: guild.id,
         adapterCreator: guild.voiceAdapterCreator,
         selfDeaf: false,
-        debug: true,
-      });
-
-      connection.on('stateChange', (oldState, newState) => {
-        logger.info(`Voice connection: ${oldState.status} -> ${newState.status}`);
-      });
-
-      connection.on('debug', (msg) => {
-        logger.info(`[Voice WS] ${msg}`);
       });
 
       try {
