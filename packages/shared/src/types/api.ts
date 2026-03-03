@@ -38,6 +38,9 @@ export interface SystemStats {
   activeGuilds: number;
   totalUsers: number;
   totalCommands: number;
+  totalCases: number;
+  totalWarnings: number;
+  totalAddons: number;
   uptime: number;
   memoryUsage: number;
   cpuUsage: number;
