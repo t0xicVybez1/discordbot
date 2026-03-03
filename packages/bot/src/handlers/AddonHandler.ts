@@ -185,7 +185,8 @@ export class AddonHandler {
     if (definition.events) {
       for (const eventDef of definition.events) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const handler = (...args: any[]) => eventDef.handler(context, ...args);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const handler = (...args: any[]) => (eventDef.handler as (...a: any[]) => void)(context, ...args);
 
         if (eventDef.once) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
