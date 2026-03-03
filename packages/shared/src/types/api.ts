@@ -53,4 +53,5 @@ export interface GuildAnalytics {
   moderationActions24h: number;
   topChannels: Array<{ channelId: string; messageCount: number }>;
   topCommands: Array<{ command: string; count: number }>;
+  logEvents?: Array<{ type: string; _count: { type: number } }>;
 }
