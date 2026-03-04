@@ -31,7 +31,7 @@ fi
 # Pull latest changes
 if [ "$PULL" = true ]; then
   echo "[1/5] Pulling latest changes..."
-  git pull origin main
+  git pull origin "$(git rev-parse --abbrev-ref HEAD)"
 fi
 
 # Build Docker images
