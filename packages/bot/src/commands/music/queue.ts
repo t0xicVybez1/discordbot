@@ -7,6 +7,7 @@ import type { BotCommand } from '../../types.js';
 import type { BotClient } from '../../client.js';
 import { errorEmbed } from '../../utils/embed.js';
 import { MusicManager } from '../../modules/music/MusicManager.js';
+import { getGuildSettings } from '../../utils/settings.js';
 import { COLORS } from '@discordbot/shared';
 
 const command: BotCommand = {
@@ -18,6 +19,12 @@ const command: BotCommand = {
   async execute(interaction: ChatInputCommandInteraction, _client: BotClient) {
     if (!interaction.guild) {
       await interaction.reply({ embeds: [errorEmbed('Error', 'This command must be used in a server.')], ephemeral: true });
+      return;
+    }
+
+    const settings = await getGuildSettings(interaction.guild.id);
+    if (settings && !settings.musicEnabled) {
+      await interaction.reply({ embeds: [errorEmbed('Music Disabled', 'Music commands are disabled for this server.')], ephemeral: true });
       return;
     }
 

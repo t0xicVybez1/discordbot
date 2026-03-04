@@ -8,6 +8,7 @@ import type { BotCommand } from '../../types.js';
 import type { BotClient } from '../../client.js';
 import { successEmbed, errorEmbed, infoEmbed } from '../../utils/embed.js';
 import { MusicManager } from '../../modules/music/MusicManager.js';
+import { getGuildSettings } from '../../utils/settings.js';
 
 const command: BotCommand = {
   data: new SlashCommandBuilder()
@@ -24,6 +25,12 @@ const command: BotCommand = {
 
     if (!interaction.guild) {
       await interaction.editReply({ embeds: [errorEmbed('Error', 'This command must be used in a server.')] });
+      return;
+    }
+
+    const settings = await getGuildSettings(interaction.guild.id);
+    if (settings && !settings.musicEnabled) {
+      await interaction.editReply({ embeds: [errorEmbed('Music Disabled', 'Music commands are disabled for this server.')] });
       return;
     }
 

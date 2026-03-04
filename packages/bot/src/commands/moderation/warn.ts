@@ -8,7 +8,7 @@ import type { BotClient } from '../../client.js';
 import { moderationEmbed, errorEmbed, infoEmbed } from '../../utils/embed.js';
 import { canModerate } from '../../utils/permissions.js';
 import { prisma } from '../../database.js';
-import { getNextCaseNumber } from '../../utils/settings.js';
+import { getNextCaseNumber, getGuildSettings } from '../../utils/settings.js';
 import { LoggingModule } from '../../modules/logging/LoggingModule.js';
 
 const command: BotCommand = {
@@ -27,6 +27,12 @@ const command: BotCommand = {
 
   async execute(interaction: ChatInputCommandInteraction, _client: BotClient) {
     await interaction.deferReply();
+
+    const settings = await getGuildSettings(interaction.guildId!);
+    if (settings && !settings.moderationEnabled) {
+      await interaction.editReply({ embeds: [errorEmbed('Moderation Disabled', 'Moderation commands are disabled for this server.')] });
+      return;
+    }
 
     const targetUser = interaction.options.getUser('user', true);
     const reason = interaction.options.getString('reason', true);

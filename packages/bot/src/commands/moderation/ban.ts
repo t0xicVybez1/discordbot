@@ -44,6 +44,12 @@ const command: BotCommand = {
   async execute(interaction: ChatInputCommandInteraction, client: BotClient) {
     await interaction.deferReply();
 
+    const settings = await getGuildSettings(interaction.guildId!);
+    if (settings && !settings.moderationEnabled) {
+      await interaction.editReply({ embeds: [errorEmbed('Moderation Disabled', 'Moderation commands are disabled for this server.')] });
+      return;
+    }
+
     const targetUser = interaction.options.getUser('user', true);
     const reason = interaction.options.getString('reason') ?? 'No reason provided';
     const durationStr = interaction.options.getString('duration');

@@ -8,6 +8,7 @@ import type { BotClient } from '../../client.js';
 import { COLORS } from '@discordbot/shared';
 import { prisma } from '../../database.js';
 import { errorEmbed } from '../../utils/embed.js';
+import { getGuildSettings } from '../../utils/settings.js';
 
 const command: BotCommand = {
   data: new SlashCommandBuilder()
@@ -21,6 +22,12 @@ const command: BotCommand = {
 
   async execute(interaction: ChatInputCommandInteraction, _client: BotClient) {
     await interaction.deferReply();
+
+    const settings = await getGuildSettings(interaction.guildId!);
+    if (settings && !settings.levelingEnabled) {
+      await interaction.editReply({ embeds: [errorEmbed('Leveling Disabled', 'The leveling system is disabled for this server.')] });
+      return;
+    }
 
     if (!interaction.guild) {
       await interaction.editReply({ embeds: [errorEmbed('Error', 'This command must be used in a server.')] });

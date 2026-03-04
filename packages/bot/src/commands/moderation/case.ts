@@ -8,6 +8,7 @@ import type { BotCommand } from '../../types.js';
 import type { BotClient } from '../../client.js';
 import { errorEmbed } from '../../utils/embed.js';
 import { prisma } from '../../database.js';
+import { getGuildSettings } from '../../utils/settings.js';
 import { COLORS, formatDuration } from '@discordbot/shared';
 
 const command: BotCommand = {
@@ -22,6 +23,12 @@ const command: BotCommand = {
 
   async execute(interaction: ChatInputCommandInteraction, _client: BotClient) {
     await interaction.deferReply();
+
+    const settings = await getGuildSettings(interaction.guildId!);
+    if (settings && !settings.moderationEnabled) {
+      await interaction.editReply({ embeds: [errorEmbed('Moderation Disabled', 'Moderation commands are disabled for this server.')] });
+      return;
+    }
 
     const caseNumber = interaction.options.getInteger('number', true);
 
