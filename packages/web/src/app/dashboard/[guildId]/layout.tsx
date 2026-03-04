@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth';
@@ -12,20 +12,24 @@ export default function GuildLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const params = useParams();
   const guildId = params.guildId as string;
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => { setHydrated(true); }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
     if (!isAuthenticated) router.push('/auth');
-  }, [isAuthenticated, router]);
+  }, [hydrated, isAuthenticated, router]);
 
   const { data: guildRes } = useQuery({
     queryKey: ['guild', guildId],
     queryFn: () => guildsApi.get(guildId),
-    enabled: isAuthenticated && !!guildId,
+    enabled: hydrated && isAuthenticated && !!guildId,
   });
 
   const guild = guildRes?.data?.data;
 
-  if (!isAuthenticated) return null;
+  if (!hydrated || !isAuthenticated) return null;
 
   return (
     <div className="flex min-h-screen bg-discord-darkest-bg">

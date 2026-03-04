@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api';
 import { StatCard } from '@/components/StatCard';
@@ -62,18 +63,18 @@ export default function StaffDashboard() {
         <div className="card">
           <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
           <div className="space-y-2">
-            <a href="/staff/guilds" className="btn-secondary w-full justify-start">
+            <Link href="/staff/guilds" className="btn-secondary w-full justify-start">
               <Server className="w-4 h-4" /> Browse All Guilds
-            </a>
-            <a href="/staff/users" className="btn-secondary w-full justify-start">
+            </Link>
+            <Link href="/staff/users" className="btn-secondary w-full justify-start">
               <Users className="w-4 h-4" /> Manage Portal Users
-            </a>
-            <a href="/staff/addons" className="btn-secondary w-full justify-start">
+            </Link>
+            <Link href="/staff/addons" className="btn-secondary w-full justify-start">
               <Puzzle className="w-4 h-4" /> Manage Addons Registry
-            </a>
-            <a href="/staff/logs" className="btn-secondary w-full justify-start">
+            </Link>
+            <Link href="/staff/logs" className="btn-secondary w-full justify-start">
               <Server className="w-4 h-4" /> View System Logs
-            </a>
+            </Link>
           </div>
         </div>
 

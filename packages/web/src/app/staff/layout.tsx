@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -30,8 +30,13 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
   const { isAuthenticated, user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [hydrated, setHydrated] = useState(false);
+
+  // Wait for zustand to rehydrate from localStorage before checking auth
+  useEffect(() => { setHydrated(true); }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
     if (!isAuthenticated) {
       router.push('/auth');
       return;
@@ -39,9 +44,9 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
     if (!user?.isStaff && !user?.isBotOwner) {
       router.push('/dashboard');
     }
-  }, [isAuthenticated, user, router]);
+  }, [hydrated, isAuthenticated, user, router]);
 
-  if (!isAuthenticated || (!user?.isStaff && !user?.isBotOwner)) return null;
+  if (!hydrated || !isAuthenticated || (!user?.isStaff && !user?.isBotOwner)) return null;
 
   return (
     <div className="flex min-h-screen bg-discord-darkest-bg">

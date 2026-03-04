@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth';
@@ -12,20 +12,24 @@ import { Bot } from 'lucide-react';
 export default function DashboardPage() {
   const { isAuthenticated, user } = useAuth();
   const router = useRouter();
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => { setHydrated(true); }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
     if (!isAuthenticated) router.push('/auth');
-  }, [isAuthenticated, router]);
+  }, [hydrated, isAuthenticated, router]);
 
   const { data: guildsRes, isLoading } = useQuery({
     queryKey: ['guilds'],
     queryFn: () => guildsApi.list(),
-    enabled: isAuthenticated,
+    enabled: hydrated && isAuthenticated,
   });
 
   const guilds = guildsRes?.data?.data ?? [];
 
-  if (!isAuthenticated) return null;
+  if (!hydrated || !isAuthenticated) return null;
 
   return (
     <div className="min-h-screen bg-discord-darkest-bg">
