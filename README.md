@@ -97,9 +97,17 @@ Services:
 
 ### Option A — Docker (Recommended)
 
+> **Remote server (VPS) — Required step:** `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_WS_URL` are baked into the Next.js bundle at **build time** and must point to your server's public IP/domain so browsers can reach the API. Set them in `.env` before running `--build`:
+> ```
+> NEXT_PUBLIC_API_URL=http://<your-server-ip>:4000
+> NEXT_PUBLIC_WS_URL=ws://<your-server-ip>:4000
+> DISCORD_REDIRECT_URI=http://<your-server-ip>:3000/auth/callback
+> CORS_ORIGIN=http://<your-server-ip>:3000
+> ```
+
 ```bash
 cp .env.example .env
-# fill in .env
+# fill in .env (set NEXT_PUBLIC_API_URL to your server's IP if hosting remotely)
 
 bash scripts/deploy.sh --build --seed --commands
 ```

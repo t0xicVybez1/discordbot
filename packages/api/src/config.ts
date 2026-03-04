@@ -31,7 +31,7 @@ export const config = {
     password: optional('REDIS_PASSWORD'),
   },
 
-  owners: optional('BOT_OWNER_IDS', '').split(',').filter(Boolean),
+  owners: optional('BOT_OWNER_IDS', '').split(',').map((id) => id.trim()).filter(Boolean),
   env: optional('NODE_ENV', 'development'),
   logLevel: optional('LOG_LEVEL', 'info'),
 
