@@ -38,7 +38,7 @@ export async function setupWebSocket(server: FastifyInstance): Promise<void> {
 
     logger.debug(`WebSocket client connected: ${clientId}`);
 
-    socket.on('message', async (raw) => {
+    socket.on('message', async (raw: { toString(): string }) => {
       try {
         const msg = JSON.parse(raw.toString()) as {
           type: string;
@@ -90,7 +90,7 @@ export async function setupWebSocket(server: FastifyInstance): Promise<void> {
       logger.debug(`WebSocket client disconnected: ${clientId}`);
     });
 
-    socket.on('error', (err) => {
+    socket.on('error', (err: Error) => {
       logger.error({ err }, 'WebSocket error');
       clients.delete(clientId);
     });
