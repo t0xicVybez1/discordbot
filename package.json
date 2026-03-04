@@ -19,7 +19,8 @@
     "db:push": "prisma db push --schema=./prisma/schema.prisma",
     "db:studio": "prisma studio --schema=./prisma/schema.prisma",
     "db:seed": "tsx prisma/seed.ts",
-    "deploy:commands": "pnpm db:generate && pnpm --filter @discordbot/bot deploy:commands"
+    "deploy:commands": "pnpm db:generate && pnpm --filter @discordbot/bot deploy:commands",
+    "grant-staff": "tsx scripts/grant-staff.ts"
   },
   "devDependencies": {
     "concurrently": "^9.0.0",

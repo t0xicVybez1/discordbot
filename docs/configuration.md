@@ -325,3 +325,40 @@ LOG_LEVEL=info
 | `NEXTAUTH_SECRET` | ✅ | Generate: `openssl rand -hex 32` |
 | `NEXTAUTH_URL` | ✅ | `http://localhost:3000` for dev |
 | `LAVALINK_PASSWORD` | — | Default: `youshallnotpass` (matches docker-compose) |
+
+---
+
+## Staff Portal Access
+
+The staff portal (`/staff`) is gated by the `isStaff` field in the `portal_users` database table. It is not controlled by a role or environment variable — you grant it explicitly using the included script.
+
+### Grant staff access
+
+Run from the project root (where `.env` lives):
+
+```bash
+pnpm grant-staff <discord-user-id>
+```
+
+### Revoke staff access
+
+```bash
+pnpm grant-staff <discord-user-id> --revoke
+```
+
+### Grant bot owner access (bypasses all permission checks)
+
+```bash
+pnpm grant-staff <discord-user-id> --owner
+```
+
+### How to find a Discord user ID
+
+1. Open Discord → **Settings → Advanced → Developer Mode** (enable it)
+2. Right-click any user's name → **Copy User ID**
+
+### Notes
+
+- The user does not need to have logged into the portal first. The record is created immediately and their real username is filled in on their first OAuth login.
+- Users listed in `BOT_OWNER_IDS` in `.env` bypass all permission checks and can always access the staff portal without a database grant.
+- Once you have one staff member, you can also manage grants from within the staff portal itself at Admin → Users.

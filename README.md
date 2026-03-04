@@ -18,7 +18,7 @@ discordbot/
 ├── prisma/
 │   └── schema.prisma       # PostgreSQL database schema
 ├── docker/                 # Dockerfiles
-├── scripts/                # Deployment scripts
+├── scripts/                # Deployment and admin scripts
 └── docker-compose.yml
 ```
 
@@ -26,15 +26,15 @@ discordbot/
 
 | Component | Technology |
 |-----------|-----------|
-| Bot | Discord.js v14, TypeScript |
-| API | Fastify, TypeScript |
+| Bot | Discord.js v14, TypeScript, @discordjs/voice |
+| API | Fastify 5, TypeScript |
 | Database | PostgreSQL + Prisma ORM |
 | Cache | Redis + ioredis |
 | Queue | BullMQ |
 | Frontend | Next.js 14, React, Tailwind CSS |
 | Real-time | WebSocket (native WS via Fastify) |
-| Auth | Discord OAuth2 + JWT |
-| Music | play-dl + @discordjs/voice |
+| Auth | Discord OAuth2 + JWT (15m access / 7d refresh) |
+| Music | yt-dlp + @discordjs/voice + ffmpeg |
 | Container | Docker + docker-compose |
 
 ---
@@ -45,6 +45,8 @@ discordbot/
 - Node.js >= 20
 - pnpm >= 9 (`npm install -g pnpm`)
 - Docker + Docker Compose
+- ffmpeg (`apt install ffmpeg`) — required for music
+- yt-dlp (`pip install yt-dlp` or `apt install yt-dlp`) — required for music
 
 ### 1. Clone & Setup
 ```bash
@@ -93,10 +95,11 @@ Services:
 
 ## Production Deployment
 
+### Option A — Docker (Recommended)
+
 ```bash
-# Full Docker deployment
 cp .env.example .env
-# ... fill in .env ...
+# fill in .env
 
 bash scripts/deploy.sh --build --seed --commands
 ```
@@ -109,12 +112,129 @@ Individual options:
 --commands  # deploy Discord slash commands
 ```
 
-### View logs:
+View logs:
 ```bash
 docker compose logs -f bot    # Bot logs
 docker compose logs -f api    # API logs
 docker compose logs -f web    # Web logs
 ```
+
+---
+
+### Option B — VPS with pm2 (without Docker)
+
+Use this if you are running the bot directly on a Linux server with pm2.
+
+#### Server prerequisites
+
+```bash
+# Node.js 20+
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -
+sudo apt install -y nodejs
+
+# pnpm and pm2
+npm install -g pnpm pm2
+
+# ffmpeg and yt-dlp (required for music)
+sudo apt install -y ffmpeg
+sudo pip3 install yt-dlp
+
+# PostgreSQL and Redis (or use managed services)
+sudo apt install -y postgresql redis-server
+```
+
+#### First-time setup
+
+```bash
+git clone <your-repo> ~/discordbot
+cd ~/discordbot
+pnpm install
+
+cp .env.example .env
+nano .env   # fill in all required values
+
+pnpm db:generate
+pnpm db:migrate
+pnpm build
+pnpm deploy:commands
+
+# Grant yourself staff access (see Staff Management below)
+pnpm grant-staff <your-discord-user-id>
+
+pm2 start ecosystem.config.cjs
+pm2 save
+pm2 startup   # configure auto-start on server reboot
+```
+
+#### Updating
+
+```bash
+cd ~/discordbot
+git pull
+
+# If package.json changed:
+pnpm install
+
+# Rebuild and restart the affected service(s):
+pnpm --filter @discordbot/bot build && pm2 restart bot
+pnpm --filter @discordbot/api build && pm2 restart api
+pnpm --filter @discordbot/web build && pm2 restart web
+```
+
+#### Viewing logs
+
+```bash
+# Live tail via pm2
+pm2 logs bot
+
+# Read last N lines directly (does not hang)
+tail -50 ~/.pm2/logs/bot-out.log
+tail -50 ~/.pm2/logs/api-out.log
+```
+
+---
+
+## Staff Management
+
+The staff portal (`/staff`) requires users to have `isStaff: true` in the database. Use the included script — the user does **not** need to have logged in first.
+
+```bash
+# Grant staff access
+pnpm grant-staff <discord-user-id>
+
+# Revoke staff access
+pnpm grant-staff <discord-user-id> --revoke
+
+# Grant bot owner (full staff + owner privileges)
+pnpm grant-staff <discord-user-id> --owner
+```
+
+**How to find a Discord user ID:**
+1. Discord -> Settings -> Advanced -> **Developer Mode** (enable it)
+2. Right-click any username -> **Copy User ID**
+
+> Bot owners listed in `BOT_OWNER_IDS` in `.env` can always access the staff portal without a database grant.
+
+---
+
+## Feature Flags
+
+Every major feature has a **two-layer toggle** system. Both layers must be enabled for the feature to be active.
+
+| Layer | Location | Controls |
+|-------|----------|---------|
+| Master switch | General Settings page -> Features section | Whether the feature runs at all |
+| Sub-settings | Dedicated page (AutoMod, Welcome, etc.) | Fine-grained config within the feature |
+
+**Example — Welcome messages:**
+1. General Settings -> "Welcome Messages" -> Enable *(master switch)*
+2. Welcome page -> "Enable Welcome Messages" -> Enable, select a channel, set a message template
+
+**Example — Word filter:**
+1. General Settings -> "Auto-Mod" -> Enable *(master switch)*
+2. AutoMod page -> "Word Filter" -> Enable, add words to the blocked list
+
+Settings changes apply **instantly** via Redis pub/sub — no bot restart needed.
 
 ---
 
@@ -140,7 +260,7 @@ docker compose logs -f web    # Web logs
 ### Music
 | Command | Description |
 |---------|-------------|
-| `/play <query>` | Play a song from YouTube/search |
+| `/play <query>` | Play a song from YouTube or by search |
 | `/skip` | Skip the current song |
 | `/stop` | Stop music and clear queue |
 | `/queue` | View the queue |
@@ -169,7 +289,7 @@ Access at `/dashboard` — requires Discord OAuth2 login.
 - Audit log viewer with filtering
 
 ### Staff Portal
-Access at `/staff` — requires Staff or Bot Owner role.
+Access at `/staff` — requires `isStaff: true` in the database (see [Staff Management](#staff-management)).
 
 - System-wide analytics dashboard
 - Browse all guilds using the bot
@@ -194,7 +314,7 @@ Settings changes in the web portal take effect **immediately** without restartin
 
 ## Auto-Mod Features
 
-Configure in Dashboard → Auto-Mod:
+Configure in Dashboard → Auto-Mod. The **Auto-Mod master switch** in General Settings must also be enabled.
 
 - **Anti-Spam**: Configurable message threshold per time window
 - **Word Filter**: Blocked word list with configurable action (delete/warn/mute)
@@ -350,7 +470,7 @@ curl -X POST http://localhost:4000/admin/addons \
 | `addons` | Registered addons |
 | `guild_addons` | Per-guild addon installations |
 | `addon_data` | Addon key-value storage |
-| `portal_users` | Web portal users (Discord OAuth) |
+| `portal_users` | Web portal users — `isStaff` controls staff portal access |
 | `user_sessions` | JWT refresh token tracking |
 | `log_entries` | Audit log entries |
 | `system_metrics` | Performance metrics |
@@ -466,7 +586,7 @@ See `.env.example` for the complete list. Key variables:
 - JWT access tokens expire in 15 minutes with refresh token rotation
 - All API endpoints require authentication
 - Guild admin routes verify Discord permissions in real-time
-- Staff routes require explicit staff role assignment
+- Staff routes require explicit `isStaff` flag — set via `pnpm grant-staff`
 - Rate limiting on all routes (100 req/min per user)
 - CORS restricted to configured origin
 - Helmet.js security headers in production
