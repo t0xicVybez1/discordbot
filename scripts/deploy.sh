@@ -50,12 +50,12 @@ sleep 5
 
 # Run database migrations
 echo "[4/5] Running database migrations..."
-docker compose run --rm api sh -c "prisma migrate deploy --schema=/app/prisma/schema.prisma"
+docker compose run --rm api sh -c "node_modules/.bin/prisma migrate deploy --schema=/app/prisma/schema.prisma"
 
 # Seed database
 if [ "$SEED" = true ]; then
   echo "    Seeding database..."
-  docker compose run --rm api sh -c "tsx /app/prisma/seed.ts"
+  docker compose run --rm api sh -c "node_modules/.bin/tsx /app/prisma/seed.ts"
 fi
 
 # Start all services
