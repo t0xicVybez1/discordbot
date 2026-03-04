@@ -18,6 +18,9 @@ prisma/migrations/
 # Logs
 logs/
 *.log
+# Re-include Next.js app routes named "logs" (not log files)
+!packages/web/src/app/**/logs/
+!packages/web/src/app/**/logs/*.tsx
 
 # OS
 .DS_Store
